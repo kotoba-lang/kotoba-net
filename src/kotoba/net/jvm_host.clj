@@ -34,10 +34,18 @@
              builder (reduce-kv (fn [b k v] (.header b (name k) (str v)))
                                 builder (or headers {}))
              request (case method
+                       :get (-> builder .GET .build)
                        :post (-> builder
                                  (.POST (HttpRequest$BodyPublishers/ofString (or body "")))
                                  (.build))
-                       :get (-> builder .GET .build)
+                       :put (-> builder
+                                (.PUT (HttpRequest$BodyPublishers/ofString (or body "")))
+                                (.build))
+                       :patch (-> builder
+                                  (.method "PATCH"
+                                           (HttpRequest$BodyPublishers/ofString (or body "")))
+                                  (.build))
+                       :delete (-> builder .DELETE .build)
                        ;; fail-closed: an unknown method is an error, not a GET
                        (throw (ex-info "unsupported-http-method" {:method method})))]
          (let [resp (.send client request (HttpResponse$BodyHandlers/ofString))]
