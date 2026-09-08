@@ -19,12 +19,15 @@
 
   Opts:
     :timeout-seconds — connect + request timeout (default 120)
+    :as-bytes        — when true, response body is returned as a byte array
+                       instead of a string (for binary artifacts)
 
   Returns `transport!` of shape
-    ({:url string :method :get|:post :headers map :body string} -> {:status int :body string})
+    ({:url string :method :get|:post|:put|:patch|:delete
+     :headers map :body string} -> {:status int :body string-or-bytes})
   Unsupported methods throw (fail-closed, never a silent default)."
   ([] (http-transport {}))
-  ([{:keys [timeout-seconds] :or {timeout-seconds 120}}]
+  ([{:keys [timeout-seconds as-bytes] :or {timeout-seconds 120}}]
    (let [client (-> (HttpClient/newBuilder)
                     (.connectTimeout (Duration/ofSeconds timeout-seconds))
                     (.build))]
@@ -48,6 +51,9 @@
                        :delete (-> builder .DELETE .build)
                        ;; fail-closed: an unknown method is an error, not a GET
                        (throw (ex-info "unsupported-http-method" {:method method})))]
-         (let [resp (.send client request (HttpResponse$BodyHandlers/ofString))]
+         (let [handler (if as-bytes
+                         (HttpResponse$BodyHandlers/ofByteArray)
+                         (HttpResponse$BodyHandlers/ofString))
+               resp (.send client request handler)]
            {:status (.statusCode resp)
             :body (.body resp)}))))))
