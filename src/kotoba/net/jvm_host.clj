@@ -8,7 +8,7 @@
 
   .clj deliberately: HTTP over sockets is a host effect with no ClojureScript
   meaning; the Node/browser counterpart lives with its own host."
-  (:require [clojure.string :as str])
+  (:require [kotoba.lang.text :as str])
   (:import (java.net URI)
            (java.net.http HttpClient HttpClient$Redirect HttpRequest HttpRequest$BodyPublishers
                           HttpResponse$BodyHandlers)
