@@ -21,6 +21,8 @@
     :timeout-seconds — connect + request timeout (default 120)
     :as-bytes        — when true, response body is returned as a byte array
                        instead of a string (for binary artifacts)
+    :body-bytes      — when present (byte array), the request body is sent as
+                       raw bytes instead of the :body string
 
   Returns `transport!` of shape
     ({:url string :method :get|:post|:put|:patch|:delete
@@ -31,7 +33,7 @@
    (let [client (-> (HttpClient/newBuilder)
                     (.connectTimeout (Duration/ofSeconds timeout-seconds))
                     (.build))]
-     (fn [{:keys [url method headers body]}]
+     (fn [{:keys [url method headers body body-bytes]}]
        (let [builder (-> (HttpRequest/newBuilder (URI/create url))
                          (.timeout (Duration/ofSeconds timeout-seconds)))
              builder (reduce-kv (fn [b k v] (.header b (name k) (str v)))
@@ -39,14 +41,20 @@
              request (case method
                        :get (-> builder .GET .build)
                        :post (-> builder
-                                 (.POST (HttpRequest$BodyPublishers/ofString (or body "")))
+                                 (.POST (if body-bytes
+                                          (HttpRequest$BodyPublishers/ofByteArray body-bytes)
+                                          (HttpRequest$BodyPublishers/ofString (or body ""))))
                                  (.build))
                        :put (-> builder
-                                (.PUT (HttpRequest$BodyPublishers/ofString (or body "")))
+                                (.PUT (if body-bytes
+                                        (HttpRequest$BodyPublishers/ofByteArray body-bytes)
+                                        (HttpRequest$BodyPublishers/ofString (or body ""))))
                                 (.build))
                        :patch (-> builder
                                   (.method "PATCH"
-                                           (HttpRequest$BodyPublishers/ofString (or body "")))
+                                           (if body-bytes
+                                             (HttpRequest$BodyPublishers/ofByteArray body-bytes)
+                                             (HttpRequest$BodyPublishers/ofString (or body ""))))
                                   (.build))
                        :delete (-> builder .DELETE .build)
                        ;; fail-closed: an unknown method is an error, not a GET
