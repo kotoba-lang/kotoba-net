@@ -10,7 +10,7 @@
   meaning; the Node/browser counterpart lives with its own host."
   (:require [clojure.string :as str])
   (:import (java.net URI)
-           (java.net.http HttpClient HttpRequest HttpRequest$BodyPublishers
+           (java.net.http HttpClient HttpClient$Redirect HttpRequest HttpRequest$BodyPublishers
                           HttpResponse$BodyHandlers)
            (java.time Duration)))
 
@@ -23,15 +23,19 @@
                        instead of a string (for binary artifacts)
     :body-bytes      — when present (byte array), the request body is sent as
                        raw bytes instead of the :body string
+    :follow-redirects — when true, HTTP redirects are followed automatically
 
   Returns `transport!` of shape
     ({:url string :method :get|:post|:put|:patch|:delete
      :headers map :body string} -> {:status int :body string-or-bytes})
   Unsupported methods throw (fail-closed, never a silent default)."
   ([] (http-transport {}))
-  ([{:keys [timeout-seconds as-bytes] :or {timeout-seconds 120}}]
+  ([{:keys [timeout-seconds as-bytes follow-redirects] :or {timeout-seconds 120}}]
    (let [client (-> (HttpClient/newBuilder)
                     (.connectTimeout (Duration/ofSeconds timeout-seconds))
+                    (.followRedirects (if follow-redirects
+                                        HttpClient$Redirect/NORMAL
+                                        HttpClient$Redirect/NEVER))
                     (.build))]
      (fn [{:keys [url method headers body body-bytes]}]
        (let [builder (-> (HttpRequest/newBuilder (URI/create url))
